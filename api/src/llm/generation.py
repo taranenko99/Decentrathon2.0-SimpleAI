@@ -15,7 +15,7 @@ from langchain.prompts.chat import ChatPromptTemplate
 
 
 from dotenv import load_dotenv
-from src.llm.prompts import CLASSIFICATION_PROMPT
+from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS
 
 load_dotenv()
 
@@ -85,6 +85,21 @@ def binary_classify(text:str) -> json:
     answer = response.choices[0].message.content
     return answer
 
+
+def generate_summary_of_analysis(analysis_json):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": SUMMARY_ANALYSIS},
+            {"role": "user", "content": f'Анализ в JSON: {analysis_json}'}
+        ],
+        temperature=0.4,
+        max_tokens=2048,
+    )
+    
+    answer = response.choices[0].message.content
+    return answer
+
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 def is_memory_empty(telegram_id: str) -> bool:
@@ -128,3 +143,8 @@ def qa(user_query, telegram_id):
         result = {'bot_message':answer,'trigger':bool(status_answer)}
         return result
 
+if __name__ == '__main__':
+    with open('result.json','r',encoding='utf-8') as f:
+        data = f.read()
+    rs =generate_summary_of_analysis(data)
+    print(rs)
