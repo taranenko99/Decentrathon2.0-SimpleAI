@@ -1,5 +1,7 @@
 faiss_index/
-
+test_photos/
+*.png
+llm/result.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
