@@ -39,5 +39,10 @@ class CreatePatient(BaseModel):
         }
 
 
+class RequestChat(BaseModel):
+    telegram_id: int
+    message: str
+
+
 class ViewAllPatients(BaseModel):
     response: list[CreatePatient]

@@ -8,3 +8,8 @@ class ResponseSchema(BaseModel):
 
 class ErrorSchema(BaseModel):
     error: str = Field(...)
+
+
+class ResponseChat(BaseModel):
+    trigger: bool = Field(...) 
+    bot_message: str = Field(...)
