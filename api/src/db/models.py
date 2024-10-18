@@ -63,9 +63,7 @@ class PatientTests(Base):
     patient_id: Mapped[int] = mapped_column(
         ForeignKey("patients.id", ondelete="CASCADE"), nullable=False
     )
-    title: Mapped[str] = mapped_column(String(255))
-    result: Mapped[str] = mapped_column(Text)
-    date_from: Mapped[date] = mapped_column(Date)
+    file_path: Mapped[str] = mapped_column(String, nullable=True)
 
     patient: Mapped[Patients] = relationship(
         back_populates="tests", lazy="selectin"
