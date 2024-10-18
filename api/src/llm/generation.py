@@ -15,7 +15,7 @@ from langchain.prompts.chat import ChatPromptTemplate
 
 
 from dotenv import load_dotenv
-from prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS
+from src.llm.prompts import CLASSIFICATION_PROMPT
 
 load_dotenv()
 
@@ -68,7 +68,10 @@ def get_retrievers(pages):
     return ensemble_retriever
 
 
-def binary_classify(text):
+def binary_classify(text:str) -> json:
+    '''Функция для генерации уточняющих вопрос пациенту
+        text: Результат векторного поиска по самочувствию пациента
+    '''
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
@@ -81,23 +84,6 @@ def binary_classify(text):
     
     answer = response.choices[0].message.content
     return answer
-
-
-def generate_summary_of_analysis(analysis_json):
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": SUMMARY_ANALYSIS},
-            {"role": "user", "content": f'Анализ в JSON: {analysis_json}'}
-        ],
-        temperature=0.4,
-        max_tokens=2048,
-    )
-    
-    answer = response.choices[0].message.content
-    return answer
-
-
 
 r = redis.Redis(host='localhost', port=6379, db=0)
 
@@ -142,9 +128,3 @@ def qa(user_query, telegram_id):
         result = {'bot_message':answer,'trigger':bool(status_answer)}
         return result
 
-
-if __name__ == '__main__':
-    with open('result.json','r',encoding='utf-8') as f:
-        data = f.read()
-    rs =generate_summary_of_analysis(data)
-    print(rs)
