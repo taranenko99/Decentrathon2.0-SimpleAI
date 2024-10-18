@@ -4,7 +4,7 @@ from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 # local
-from src.v1.states import Begining
+from src.v1.states import Master
 from src.v1.mixins import MessageMixin, CallbackMixin
 from src.v1.utils.master import check_user_in_api, create_user
 
@@ -15,7 +15,7 @@ router = Router(name="Master Router")
 @router.message(CommandStart())
 class StartBot(MessageMixin):
     async def respond(self):
-        await self.fsm.set_state(state=Begining.select)
+        await self.fsm.set_state(state=Master.select)
         markup = InlineKeyboardMarkup(inline_keyboard=[[
             InlineKeyboardButton(
                 text="Врач", callback_data="doctor"
@@ -39,31 +39,31 @@ class StartBot(MessageMixin):
                 await self.respond()
 
 
-@router.callback_query(Begining.select, F.data == "doctor")
+@router.callback_query(Master.select, F.data == "doctor")
 class DocType(CallbackMixin):
     async def handle(self):
         self.progress_func()
         await self.answer_to_callback()
-        await self.fsm.set_state(state=Begining.doc_number)
+        await self.fsm.set_state(state=Master.doc_number)
         await self.fsm.update_data(data={"user": {
             "type": self.event.data
         }})
         await self.make_response(text="Пожалуйста введите свой ИИН")
 
 
-@router.callback_query(Begining.select, F.data == "patient")
+@router.callback_query(Master.select, F.data == "patient")
 class PatType(CallbackMixin):
     async def handle(self):
         self.progress_func()
         await self.answer_to_callback()
-        await self.fsm.set_state(state=Begining.pat_number)
+        await self.fsm.set_state(state=Master.pat_number)
         await self.fsm.update_data(data={"user": {
             "type": self.event.data
         }})
         await self.make_response(text="Пожалуйста введите свой ИИН")
 
 
-@router.message(StateFilter(Begining.doc_number, Begining.pat_number))
+@router.message(StateFilter(Master.doc_number, Master.pat_number))
 class CreateUser(MessageMixin):
     async def handle(self):
         self.progress_func()
