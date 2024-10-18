@@ -7,3 +7,6 @@ langchain_community
 langchain-redis 
 langchain-openai 
 redis
+pytesseract 
+pillow 
+opencv-python
