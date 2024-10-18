@@ -1,22 +1,24 @@
 # Third-Party
 import uvicorn
 import asyncio
-from llm.vector_db.utils import create_vector_db
+from src.llm.vector_db.utils import create_vector_db
 
 # Local
 from src.settings.base import logger, app
-from src.v1.views import Registration, ForDoctors, ViewUsers
+from src.v1.views import Registration, ForDoctors, ViewUsers, Chat
 
 
 async def main():
     app.include_router(Registration().router)
     app.include_router(ForDoctors().router)
     app.include_router(ViewUsers().router)
+    app.include_router(Chat().router)
     config = uvicorn.Config(
         app=app, host="0.0.0.0", 
         port=8000
     )
     server = uvicorn.Server(config=config)
+    create_vector_db(r'src/llm/vector_db/symptoms.txt')
     logger.info("SERVER STARTED")
     await server.serve()
 

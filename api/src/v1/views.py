@@ -6,7 +6,6 @@ from fastapi import (
 # Thirt-Party
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select
-from psycopg.errors import IntegrityError, UniqueViolation
 import aiofiles
 
 # Python
@@ -15,10 +14,11 @@ from datetime import datetime
 import os
 
 # Local
+from src.llm.generation import qa
 from src.db.models import Doctors, Patients, PatientTests
 from src.settings.base import VOLUME, logger
 from .depends import get_async_session
-from .schemas.response import ErrorSchema, ResponseSchema
+from .schemas.response import ErrorSchema, ResponseSchema, ResponseChat
 from .schemas.users import \
     CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients
 
@@ -205,3 +205,29 @@ class ForDoctors:
             logger.error(error)
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
             return ErrorSchema(error=error)
+
+
+class Chat:
+
+    def __init__(self) -> None:
+        self.path = "/chat"
+        self.router = APIRouter(
+            prefix="/api/v1", tags=["tests"]
+        )
+        self.router.add_api_route(
+            path=self.path, endpoint=self.chat, 
+            methods=["POST"], responses={
+                200: {"model": ResponseChat},
+                500: {"model": ErrorSchema}
+            }
+        )
+    async def chat(
+    self, response: Response,
+    telegram_id: Annotated[int, Form(ge=0)],
+    message: str,
+):
+        try:
+            bot_response = qa(user_query=message, telegram_id=str(telegram_id))
+            return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
+        except Exception as e:
+            logger.error(e)
