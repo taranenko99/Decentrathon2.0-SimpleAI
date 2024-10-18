@@ -1,17 +1,13 @@
 import os
 import json
 import openai
+import redis
 
-import asyncio
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.retrievers import EnsembleRetriever
 from langchain_community.retrievers import BM25Retriever
 from langchain_community.vectorstores import FAISS
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains.history_aware_retriever import create_history_aware_retriever
-from langchain.chains.retrieval import create_retrieval_chain
 from langchain_core.prompts import MessagesPlaceholder
 
 from langchain_community.chat_message_histories import RedisChatMessageHistory
@@ -49,7 +45,7 @@ def get_chain():
     )
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system","Ты ассистент гинеколог. Твоя задача задавать уточняющие вопросы пользователю из заметки гинеколога по проблеме пациента и помочь ему выявить причину проблемы. Если по ответам пациента можно понять, что ему очень плохо и такого быть не должно, то пиши слово ТРИГГЕР, или наоборот, если по ответам можно понять, что ничего страшного с пациентом не происходит, то пиши слово НОРМ.  А до тех пор задавай вопросы из заметок и также дополняй от себя. Если ответ пользователя не по теме, сообщи ему об этом. \nЗаметки гинеколога: {context}"),
+        ("system","Ты ассистент гинеколог. Твоя задача задавать уточняющие вопросы пользователю из заметки гинеколога по проблеме пациента и помочь ему выявить причину проблемы. Если по ответам пациента можно понять, что ему очень плохо и такого быть не должно, то фокусируйся на этом а до тех пор задавай вопросы из заметок и также дополняй от себя. Если ответ пользователя не по теме, сообщи ему об этом. \nЗаметки гинеколога: {context}"),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "Ответ пользователя: {input}")
     ])
@@ -82,10 +78,53 @@ def binary_classify(text:str) -> json:
             {"role": "system", "content": CLASSIFICATION_PROMPT},
             {"role": "user", "content": f'Ответ гинеколога: {text}'}
         ],
-        temperature=0.6,
+        temperature=0.0,
         max_tokens=2048,
     )
     
     answer = response.choices[0].message.content
-    return json.loads(answer)
+    return answer
+
+r = redis.Redis(host='localhost', port=6379, db=0)
+
+def is_memory_empty(telegram_id: str) -> bool:
+    """Проверяет, пустой ли ключ в Redis."""
+    value = r.get(telegram_id)  # Получаем значение по ключу
+    return value is None or value == b''
+
+
+embeddings = OpenAIEmbeddings()
+
+def qa(user_query, telegram_id):
+    chat_history_redis = RedisChatMessageHistory(session_id=telegram_id,
+                                                    url=REDIS_URL,
+                                                    key_prefix='memory'
+                                                    )
+    
+    chat_chain = get_chain()
+    db = FAISS.load_local(r"faiss_index", embeddings, allow_dangerous_deserialization=True)
+    # create_vector_db(r'vector_db/symptoms.txt')
+    retriever = db.as_retriever()
+    docs = retriever.invoke(user_query)
+    context = docs[0].page_content
+    
+    
+
+    if is_memory_empty(telegram_id=telegram_id):
+        response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
+        answer = response.content
+        add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)
+
+        
+        result = {'bot_message':answer,'trigger':False}
+        return result
+        
+    else:
+        response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
+        answer = response.content
+        add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)
+        status_answer = binary_classify(answer)
+        
+        result = {'bot_message':answer,'trigger':bool(status_answer)}
+        return result
 
