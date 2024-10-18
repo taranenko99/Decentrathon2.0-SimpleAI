@@ -1,6 +1,7 @@
 # Third-Party
 import uvicorn
 import asyncio
+from llm.vector_db.utils import create_vector_db
 
 # Local
 from src.settings.base import logger, app
