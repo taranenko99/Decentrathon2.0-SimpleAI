@@ -1,0 +1,8 @@
+services:
+  redis:
+      image: redis/redis-stack
+      container_name: chat-redis
+      restart: always
+      env_file:
+        - .env
+      network_mode: host
