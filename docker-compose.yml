@@ -1,8 +1,15 @@
+version: '3.7'
+
 services:
+
   redis:
-      image: redis/redis-stack
-      container_name: chat-redis
-      restart: always
-      env_file:
-        - .env
-      network_mode: host
+    image: redis
+    container_name: ginekolog-chat-redis
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      - ginekolog-network
+
+networks:
+  ginekolog-network:
