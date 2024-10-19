@@ -21,7 +21,7 @@ from src.llm.get_text_from_image import get_text_from_table
 from .depends import get_async_session
 from .schemas.response import ErrorSchema, ResponseSchema, ResponseChat
 from .schemas.users import \
-    CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients, ViewTest
+    CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients, ViewTest ,RequestChat
 
 
 class Registration:
@@ -234,11 +234,10 @@ class Chat:
 
     async def chat(
         self, response: Response,
-        telegram_id: Annotated[int, Form(ge=0)],
-        message: str,
+        request: RequestChat
     ):
         try:
-            bot_response = qa(user_query=message, telegram_id=str(telegram_id))
+            bot_response = await qa(user_query=request.message, telegram_id=str(request.telegram_id))
             return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
         except Exception as e:
             logger.error(e)
