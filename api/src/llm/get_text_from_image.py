@@ -6,7 +6,7 @@ import time
 
 from dotenv import load_dotenv
 
-start = time.time()
+# start = time.time()
 
 load_dotenv()
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
@@ -48,12 +48,12 @@ def get_text_from_table(image_path):
     print(cleaned_json_string)
     
     data = json.loads(cleaned_json_string)
+    return data
+    # with open('result.json', 'w', encoding='utf-8') as f:
+    #     json.dump(data, f, ensure_ascii=False, indent=4)
 
-    with open('result.json', 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-    end = time.time()
-    print(f'execution: {end-start}')
+    # end = time.time()
+    # print(f'execution: {end-start}')
 
 if __name__ == '__main__':
     get_text_from_table('test_photos/2.png')

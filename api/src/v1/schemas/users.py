@@ -46,3 +46,9 @@ class RequestChat(BaseModel):
 
 class ViewAllPatients(BaseModel):
     response: list[CreatePatient]
+
+
+class ViewTest(BaseModel):
+    id: int
+    patient_id: int
+    data: dict
