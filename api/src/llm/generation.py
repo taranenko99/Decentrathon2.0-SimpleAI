@@ -17,7 +17,7 @@ from src.settings.base import session
 
 from dotenv import load_dotenv
 from src.db.models import PatientTests, Patients
-from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT, PATIENT_CLASSIFIER_PROMPT
+from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT, PATIENT_CLASSIFIER_PROMPT, CHAT_HISTORY_CLASSIFIER
 
 
 load_dotenv()
@@ -147,6 +147,21 @@ async def get_analysis(telegram_id: int):
     
     except Exception as e:
         logger.error(e)
+
+
+def summarize_last_chat_history(chat_history):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": CHAT_HISTORY_CLASSIFIER},
+            {"role": "user", "content": f'История с проблемой: {chat_history}'}
+        ],
+        temperature=0.0,
+        max_tokens=2048,
+    )
+    
+    answer = response.choices[0].message.content
+    return answer
         
 async def qa(user_query, telegram_id):
     chat_history_redis = RedisChatMessageHistory(session_id=telegram_id,
