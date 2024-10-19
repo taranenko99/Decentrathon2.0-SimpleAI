@@ -1,0 +1,68 @@
+services:
+
+  postgres:
+    image: postgres
+    container_name: ginekolog-chat-postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ~/apps/postgres:/var/lib/postgresql/data
+    env_file:
+      - api/.env
+    environment:
+      - POSTGRES_PASSWORD=DB_PASS
+      - POSTGRES_USER=DB_USER
+      - POSTGRES_DB=DB_NAME
+    restart: always
+    networks:
+      - ginekolog-network
+
+  redis:
+    image: redis
+    container_name: ginekolog-chat-redis
+    ports:
+      - "6379:6379"
+    restart: always
+    networks:
+      - ginekolog-network
+
+  app-api:
+    build:
+      context: .
+      dockerfile: api/DockerFile
+    container_name: ginekolog-chat-api
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes: 
+      - .:/app_api
+    env_file:
+      - api/.env
+    networks:
+      - ginekolog-network
+    depends_on:
+      - postgres
+      - redis
+
+  app-telegram-bot:
+    build:
+      context: .
+      dockerfile: bot/DockerFile
+    container_name: ginekolog-chat-telegram-bot
+    restart: always
+    ports: 
+      - "8000:8000"
+    volumes: 
+      - .:/telegram-bot
+    env_file:
+      - bot/.env
+    networks:
+      - ginekolog-network
+    depends_on:
+      - postgres
+      - redis
+      - app-api
+
+
+networks:
+  ginekolog-network:

@@ -1,0 +1,16 @@
+FROM python:3.10
+    
+# Установим рабочую директорию
+WORKDIR /api
+
+# Скопируем файл requirements.txt для установки зависимостей
+COPY api/requirements.txt .
+
+# Установим зависимости
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Скопируем все файлы проекта в контейнер
+COPY . .
+
+# Выполним скрипт main.py
+CMD ["python", "api/main.py"]
