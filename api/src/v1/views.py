@@ -14,7 +14,7 @@ from datetime import datetime
 import os
 
 # Local
-from src.llm.generation import qa
+from src.llm.generation import qa, classify_patient_answer
 from src.db.models import Doctors, Patients, PatientTests
 from src.settings.base import VOLUME, logger
 from src.llm.get_text_from_image import get_text_from_table
@@ -354,6 +354,9 @@ class Chat:
     @staticmethod
     async def chat(request: RequestChat):
         try:
+            status = classify_patient_answer(text=request.message)
+            if status == "0":
+                return ResponseChat(trigger=2, bot_message="У пациента все норм")
             bot_response = await qa(user_query=request.message, telegram_id=str(request.telegram_id))
             return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
 
