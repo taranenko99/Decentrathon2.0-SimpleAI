@@ -22,6 +22,7 @@ DB_PASS = config("DB_PASS")
 DB_HOST = config("DB_HOST")
 DB_PORT = config("DB_PORT")
 SQL_URL = f"postgresql+psycopg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+REDIS_URL = config("REDIS_URL")
 
 engine = create_async_engine(url=SQL_URL)
 session = async_sessionmaker(bind=engine, expire_on_commit=False)

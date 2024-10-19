@@ -76,17 +76,17 @@ async def get_patients(telegram_id):
 async def send_test(filepath: str, patient_id: int, filename: str):
     form = FormData()
     with open(filepath, mode="rb") as f:
-        form.add_field(name="docs", value=f, filename=filename)
+        form.add_field(name="doc", value=f, filename=filename, content_type="text/plain")
         form.add_field(name="patient_id", value=str(patient_id))
 
         async with ClientSession() as session:
             try:
                 response = await session.post(
-                    url=UPLOAD_TESTS, data=form, headers={
-                        'Content-Type': 'multipart/form-data'
-                    })
+                    url=UPLOAD_TESTS, data=form
+                )
                 response.raise_for_status()
-            except:
+            except Exception as e:
+                logger.error(f"ERROR: {e.__cause__}")
                 return None
             data = await response.json()
             return data
