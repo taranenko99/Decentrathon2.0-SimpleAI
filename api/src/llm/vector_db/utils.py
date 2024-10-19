@@ -19,3 +19,5 @@ def create_vector_db(file_path: str) -> FAISS:
     embeddings = OpenAIEmbeddings()
     db = FAISS.from_documents(docs, embeddings)
     db.save_local("faiss_index")
+    
+    return db
