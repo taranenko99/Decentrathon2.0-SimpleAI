@@ -15,6 +15,12 @@ from src.db.models import Base
 config = context.config
 section = config.config_ini_section
 
+import platform
+
+# Set event loop policy for Windows
+if platform.system() == 'Windows':
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
 config.set_section_option(section=section, name="SQL_URL", value=SQL_URL)
 
 # Interpret the config file for Python logging.

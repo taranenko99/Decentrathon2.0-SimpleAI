@@ -185,7 +185,7 @@ class ForDoctors:
             now = datetime.now().strftime("%Y-%m-%d")
             data = {}
             for doc in docs:
-                doc_path = f"docs/{now}_{doc.filename}"
+                doc_path = os.path.join("docs", f"{now}_{doc.filename}")
                 file_path = os.path.join(VOLUME, doc_path)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 async with aiofiles.open(file_path, 'wb') as f:
@@ -222,7 +222,7 @@ class Chat:
     def __init__(self) -> None:
         self.path = "/chat"
         self.router = APIRouter(
-            prefix="/api/v1", tags=["tests"]
+            prefix="/api/v1", tags=["Chat"]
         )
         self.router.add_api_route(
             path=self.path, endpoint=self.chat, 

@@ -15,8 +15,7 @@ from langchain.prompts.chat import ChatPromptTemplate
 
 
 from dotenv import load_dotenv
-# from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
-from prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
+from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
 
 
 load_dotenv()
@@ -128,6 +127,10 @@ def qa(user_query, telegram_id):
     
 
     if is_memory_empty(telegram_id=telegram_id):
+        
+        
+        analysis_result = generate_summary_of_analysis()
+        
         response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
         answer = response.content
         add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)

@@ -2,6 +2,19 @@ version: '3.7'
 
 services:
 
+  postgres:
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ~/apps/postgres:/var/lib/postgresql/data
+    env_file:
+      - api/.env
+    environment:
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=decentrathon
+
   redis:
     image: redis
     container_name: ginekolog-chat-redis
