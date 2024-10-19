@@ -1,12 +1,14 @@
 # Aiogram
-from aiogram import Router, F
-from aiogram.filters import CommandStart, StateFilter, Command
+from aiogram import Router
+from aiogram.filters import CommandStart, Command
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 # local
 from src.v1.states import Master, Doctor
-from src.v1.mixins import MessageMixin, CallbackMixin
+from src.v1.mixins import MessageMixin
 from src.v1.utils.master import check_doctor, check_patient, get_patients
+from .patient import StartDialog
 
 
 router = Router(name="Master Router")
@@ -22,7 +24,8 @@ class StartBot(MessageMixin):
             return
         patient = await check_patient(telegram_id=self.chat_id)
         if patient:
-            ...
+            help_func = StartDialog(event=self.event)
+            await help_func.handle()
             return
         await self.fsm.set_state(state=Master.select)
         markup = InlineKeyboardMarkup(inline_keyboard=[[
@@ -39,7 +42,7 @@ class StartBot(MessageMixin):
         )
 
 
-@router.message(Command("add"))
+@router.message(Command("join"))
 class AddPatient(MessageMixin):
     async def handle(self):
         self.progress_func()
@@ -60,9 +63,21 @@ class UploadTests(MessageMixin):
         if not doctor:
             await self.make_response(text="Вы не доктор")
             return
+        data = await get_patients(telegram_id=self.chat_id)
+        patients = data.get("patients")
+        if not patients:
+            await self.fsm.clear()
+            await self.make_response(text="У вас пока нет пациентов")
+            return
         await self.fsm.set_state(state=Doctor.add_tests)
-        patients = await get_patients(telegram_id=self.chat_id)
+        builder = InlineKeyboardBuilder()
+        for p in patients:
+            text = p.get("individual_number")
+            call_data = str(p.get("id"))
+            builder.row(InlineKeyboardButton(
+                text=text, callback_data=call_data
+            ))
         await self.fsm.update_data(data={"patients": patients})
         await self.make_response(
-            text=""
+            text="Выберите пациента", markup=builder.as_markup()
         )

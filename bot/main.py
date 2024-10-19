@@ -4,13 +4,15 @@ import asyncio
 # Local
 from src.settings.base import bot, logger, AIOREDIS, dp, http_session
 from src.settings.config import MENU, DESCRIPTION
+from src.v1.routers import ROUTERS
 
 
 async def main():
     try:
         await bot.set_my_commands(commands=MENU)
         await bot.set_my_description(description=DESCRIPTION)
-        logger.info(msg="START BOT")
+        dp.include_routers(*ROUTERS)
+        logger.info("START BOT")
         await dp.start_polling(bot)
     except KeyboardInterrupt:
         pass
@@ -20,7 +22,7 @@ async def main():
 async def shutdown():
     await AIOREDIS.aclose()
     await http_session.close()
-    logger.info(msg="SHUTDOWN BOT")
+    logger.info("SHUTDOWN BOT")
 
     
 if __name__ == "__main__":

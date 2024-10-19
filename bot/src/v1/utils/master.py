@@ -1,11 +1,12 @@
 # Third-Party
-from aiohttp import ClientSession
+from aiohttp import ClientSession, FormData
 
 # Local
 from src.settings.config import (
     CHAT, REG_DOC_URL, REG_PAT_URL, 
     UPLOAD_TESTS, CHECK_DOC, CHECK_PAT, MY_PATIENTS
 )
+from src.settings.base import logger
 
 
 async def check_doctor(telegram_id: int):
@@ -71,12 +72,30 @@ async def get_patients(telegram_id):
             return None
         data = await response.json()
         return data
+    
+async def send_test(filepath: str, patient_id: int, filename: str):
+    form = FormData()
+    with open(filepath, mode="rb") as f:
+        form.add_field(name="docs", value=f, filename=filename)
+        form.add_field(name="patient_id", value=str(patient_id))
+
+        async with ClientSession() as session:
+            try:
+                response = await session.post(
+                    url=UPLOAD_TESTS, data=form, headers={
+                        'Content-Type': 'multipart/form-data'
+                    })
+                response.raise_for_status()
+            except:
+                return None
+            data = await response.json()
+            return data
 
 async def make_chat(telegram_id: int, message: str):
     data = {"telegram_id": telegram_id, "message": message}
     async with ClientSession() as session:
         try:
-            response = await session.post(url=REG_PAT_URL, json=data)
+            response = await session.post(url=CHAT, json=data)
             response.raise_for_status()
         except:
             return None

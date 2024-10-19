@@ -12,4 +12,9 @@ class Master(StatesGroup):
 class Doctor(StatesGroup):
     add_patient = State()
     add_tests = State()
+    wait_doc = State()
     break_state = State()
+
+
+class Patient(StatesGroup):
+    dialog = State()
