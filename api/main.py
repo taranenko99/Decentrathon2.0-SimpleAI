@@ -5,7 +5,8 @@ from src.llm.vector_db.utils import create_vector_db
 
 # Local
 from src.settings.base import logger, app
-from src.v1.views import Registration, ForDoctors, ViewUsers, Chat
+from src.v1.views import \
+    Registration, ForDoctors, ViewUsers, Chat, CheckUser
 
 
 async def main():
@@ -13,6 +14,7 @@ async def main():
     app.include_router(ForDoctors().router)
     app.include_router(ViewUsers().router)
     app.include_router(Chat().router)
+    app.include_router(CheckUser().router)
     config = uvicorn.Config(
         app=app, host="0.0.0.0", 
         port=8000

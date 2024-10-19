@@ -5,7 +5,7 @@ from fastapi import (
 
 # Thirt-Party
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, update
 import aiofiles
 
 # Python
@@ -20,8 +20,10 @@ from src.settings.base import VOLUME, logger
 from src.llm.get_text_from_image import get_text_from_table
 from .depends import get_async_session
 from .schemas.response import ErrorSchema, ResponseSchema, ResponseChat
-from .schemas.users import \
-    CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients, ViewTest
+from .schemas.users import (
+    CreateDoctor, CreatePatient, ViewAllDoctors, 
+    ViewAllPatients, ViewTest, UpdatePatient, ViewDoctor
+)
 
 
 class Registration:
@@ -41,6 +43,13 @@ class Registration:
         self.router.add_api_route(
             path="/patient", endpoint=self.create_patient, 
             methods=["POST"], responses={
+                200: {"model": ResponseSchema},
+                400: {"model": ErrorSchema}
+            }
+        )
+        self.router.add_api_route(
+            path="/patient", endpoint=self.update_patient,
+            methods=["PATCH"], responses={
                 200: {"model": ResponseSchema},
                 400: {"model": ErrorSchema}
             }
@@ -71,7 +80,6 @@ class Registration:
         session: AsyncSession = Depends(get_async_session)
     ):
         stmt = insert(Patients).values(
-            telegram_id=obj.telegram_id,
             individual_number=obj.individual_number,
             doctor_id=obj.doctor_id
         )
@@ -81,7 +89,24 @@ class Registration:
             return ResponseSchema(response="Patient created!")
         except Exception as e:
             error = f"Нарушена уникальность: {e.__cause__}"
+            logger.error(error)
+            response.status_code = status.HTTP_400_BAD_REQUEST
+            return ErrorSchema(error=error)
 
+    @staticmethod
+    async def update_patient(
+        obj: UpdatePatient, response: Response,
+        session: AsyncSession = Depends(get_async_session)
+    ):
+        stmt = update(Patients).where(
+            Patients.individual_number==obj.individual_number
+        ).values(telegram_id=obj.telegram_id)
+        try:
+            await session.execute(statement=stmt)
+            await session.commit()
+            return ResponseSchema(response="Patient updated!")
+        except Exception as e:
+            error = f"Something went wrong: {e.__cause__}"
             logger.error(error)
             response.status_code = status.HTTP_400_BAD_REQUEST
             return ErrorSchema(error=error)
@@ -97,6 +122,13 @@ class ViewUsers:
             path="/doctor", endpoint=self.view_doctors, 
             methods=["GET"], responses={
                 200: {"model": ViewAllDoctors},
+                404: {"model": None}
+            }
+        )
+        self.router.add_api_route(
+            path="/doctor/{telegram_id}", endpoint=self.view_doctor, 
+            methods=["GET"], responses={
+                200: {"model": ViewDoctor},
                 404: {"model": None}
             }
         )
@@ -134,6 +166,33 @@ class ViewUsers:
         return ViewAllDoctors(response=obj)
     
     @staticmethod
+    async def view_doctor(
+        telegram_id: int, 
+        session: AsyncSession = Depends(get_async_session)
+    ):
+        query = select(Doctors).where(Doctors.telegram_id==telegram_id)
+        temp = await session.execute(query)
+        doctor = temp.scalars().one_or_none()
+        if not doctor:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="there is no data"
+            )
+        patients = []
+        for p in doctor.patients:
+            obj = CreatePatient(
+                id=p.id, telegram_id=p.telegram_id, 
+                individual_number=p.individual_number, 
+                doctor_id=p.doctor_id
+            )
+            patients.append(obj)
+        schema = ViewDoctor(
+            id=doctor.id, telegram_id=doctor.telegram_id, 
+            individual_number=doctor.individual_number, patients=patients
+        )
+        return schema
+    
+    @staticmethod
     async def view_patients(
         limit: int = 50, page_number: int = 0,
         session: AsyncSession = Depends(get_async_session)
@@ -160,6 +219,66 @@ class ViewUsers:
         return ViewAllPatients(response=obj)
     
 
+class CheckUser:
+    def __init__(self) -> None:
+        self.router = APIRouter(
+            prefix="/check", tags=["Check User"]
+        )
+        self.router.add_api_route(
+            path="/doctor", endpoint=self.check_doctor, 
+            methods=["GET"], responses={
+                200: {"model": CreateDoctor},
+                404: {"model": None}
+            }
+        )
+        self.router.add_api_route(
+            path="/patient", endpoint=self.check_patient, 
+            methods=["GET"], responses={
+                200: {"model": CreatePatient},
+                404: {"model": None}
+            }
+        )
+
+    @staticmethod
+    async def check_doctor(
+        telegram_id: int, 
+        session: AsyncSession = Depends(get_async_session)
+    ):
+        query = select(Doctors).where(Doctors.telegram_id==telegram_id)
+        temp = await session.execute(query)
+        obj = temp.scalars().one_or_none()
+        if not obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="there is no data"
+            )
+        schema = CreateDoctor(
+            id=obj.id, telegram_id=obj.telegram_id, 
+            individual_number=obj.individual_number
+        )
+        return schema
+    
+    @staticmethod
+    async def check_patient(
+        telegram_id: int,
+        session: AsyncSession = Depends(get_async_session)
+    ):
+        query = select(Patients).where(Patients.telegram_id==telegram_id)
+        temp = await session.execute(query)
+        obj = temp.scalars().one_or_none()
+        if not obj:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, 
+                detail="there is no data"
+            )
+        schema = CreatePatient(
+            id=obj.id, telegram_id=obj.telegram_id, 
+            individual_number=obj.individual_number,
+            doctor_id=obj.doctor_id
+        )
+        return schema
+
+
 class ForDoctors:
 
     def __init__(self) -> None:
@@ -175,8 +294,9 @@ class ForDoctors:
             }
         )
 
+    @staticmethod
     async def add_tests(
-        self, response: Response,
+        response: Response,
         patient_id: Annotated[int, Form(ge=0)],
         docs: list[UploadFile] = None, 
         session: AsyncSession = Depends(get_async_session)
@@ -185,7 +305,7 @@ class ForDoctors:
             now = datetime.now().strftime("%Y-%m-%d")
             data = {}
             for doc in docs:
-                doc_path = f"docs/{now}_{doc.filename}"
+                doc_path = os.path.join("docs", f"{now}_{doc.filename}")
                 file_path = os.path.join(VOLUME, doc_path)
                 os.makedirs(os.path.dirname(file_path), exist_ok=True)
                 async with aiofiles.open(file_path, 'wb') as f:
@@ -228,17 +348,26 @@ class Chat:
             path=self.path, endpoint=self.chat, 
             methods=["POST"], responses={
                 200: {"model": ResponseChat},
-                500: {"model": ErrorSchema}
+                400: {"model": None}
             }
         )
 
+    @staticmethod
     async def chat(
-        self, response: Response,
         telegram_id: Annotated[int, Form(ge=0)],
         message: str,
     ):
         try:
-            bot_response = qa(user_query=message, telegram_id=str(telegram_id))
-            return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
+            bot_response = qa(
+                user_query=message, telegram_id=str(telegram_id)
+            )
+            return ResponseChat(
+                trigger=bot_response['trigger'], 
+                bot_message=bot_response['bot_message']
+            )
         except Exception as e:
-            logger.error(e)
+            error = f"Something went wrong: {e.__cause__}"
+            logger.error(error)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail=e
+            )

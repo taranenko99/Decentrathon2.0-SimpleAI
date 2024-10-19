@@ -15,8 +15,7 @@ from langchain.prompts.chat import ChatPromptTemplate
 
 
 from dotenv import load_dotenv
-# from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
-from prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
+from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
 
 
 load_dotenv()
