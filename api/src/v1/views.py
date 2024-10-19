@@ -17,10 +17,11 @@ import os
 from src.llm.generation import qa
 from src.db.models import Doctors, Patients, PatientTests
 from src.settings.base import VOLUME, logger
+from src.llm.get_text_from_image import get_text_from_table
 from .depends import get_async_session
 from .schemas.response import ErrorSchema, ResponseSchema, ResponseChat
 from .schemas.users import \
-    CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients
+    CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients, ViewTest
 
 
 class Registration:
@@ -169,7 +170,7 @@ class ForDoctors:
         self.router.add_api_route(
             path=self.path, endpoint=self.add_tests, 
             methods=["POST"], responses={
-                200: {"model": ResponseSchema},
+                200: {"model": ViewTest},
                 500: {"model": ErrorSchema}
             }
         )
@@ -177,29 +178,38 @@ class ForDoctors:
     async def add_tests(
         self, response: Response,
         patient_id: Annotated[int, Form(ge=0)],
-        doc: UploadFile = None, 
+        docs: list[UploadFile] = None, 
         session: AsyncSession = Depends(get_async_session)
     ):
         try:
             now = datetime.now().strftime("%Y-%m-%d")
-            doc_path = f"docs/{now}_{doc.filename}"
-            file_path = os.path.join(VOLUME, doc_path)
-            os.makedirs(os.path.dirname(file_path), exist_ok=True)
-            async with aiofiles.open(file_path, 'wb') as f:
-                while content := await doc.read(1024):
-                    await f.write(content)
+            data = {}
+            for doc in docs:
+                doc_path = f"docs/{now}_{doc.filename}"
+                file_path = os.path.join(VOLUME, doc_path)
+                os.makedirs(os.path.dirname(file_path), exist_ok=True)
+                async with aiofiles.open(file_path, 'wb') as f:
+                    while content := await doc.read(1024):
+                        await f.write(content)
+                temp_data = get_text_from_table(image_path=file_path)
+                data.update({f"{now}_{doc.filename}": temp_data})
+
         except Exception as e:
             error = f"Something went wrong: {e.__cause__}"
             logger.error(error)
             response.status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
             return ErrorSchema(error=error)
         query = insert(PatientTests).values(
-            patient_id=patient_id, file_path=file_path
-        )
+            patient_id=patient_id, file_path=file_path, data=data
+        ).returning(PatientTests)
         try:
-            await session.execute(query)
+            result = await session.execute(query)
+            temp = result.scalars().one_or_none()
             await session.commit()
-            return ResponseSchema(response="Test added successfully!")
+            schema = ViewTest(
+                id=temp.id, patient_id=temp.patient_id, data=temp.data
+            )
+            return schema
         except Exception as e:
             error = f"Something went wrong: {e.__cause__}"
             logger.error(error)
@@ -221,11 +231,12 @@ class Chat:
                 500: {"model": ErrorSchema}
             }
         )
+
     async def chat(
-    self, response: Response,
-    telegram_id: Annotated[int, Form(ge=0)],
-    message: str,
-):
+        self, response: Response,
+        telegram_id: Annotated[int, Form(ge=0)],
+        message: str,
+    ):
         try:
             bot_response = qa(user_query=message, telegram_id=str(telegram_id))
             return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
