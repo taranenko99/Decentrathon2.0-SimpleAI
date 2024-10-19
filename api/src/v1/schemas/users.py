@@ -28,6 +28,7 @@ class CreatePatient(BaseModel):
     telegram_id: Optional[int] = None
     individual_number: str = Field(min_length=12, max_length=12)
     doctor_id: int = Field(ge=0)
+    doctor: Optional[CreateDoctor] = None
 
     class Config:
         json_schema_extra = {

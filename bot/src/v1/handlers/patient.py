@@ -1,15 +1,26 @@
 # Aiogram
 from aiogram import Router, F
-from aiogram.filters import CommandStart, StateFilter
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+
+# Third-Party
+import asyncio
 
 # local
 from src.v1.states import Master, Patient
 from src.v1.mixins import MessageMixin, CallbackMixin
-from src.v1.utils.master import update_patient, make_chat
+from src.v1.utils.master import update_patient, make_chat, check_patient, check_doctor
+from .doctor import Alarm
 
 
 router = Router(name="Patient Router")
+
+
+class StartDialog(MessageMixin):
+    async def handle(self):
+        self.progress_func()
+        await self.fsm.set_state(state=Patient.dialog)
+        await self.make_response(
+            text="Здравствуйте! Как ваше самочувствие?"
+        )
 
 
 @router.callback_query(Master.select, F.data == "patient")
@@ -40,17 +51,11 @@ class UpdatePatient(MessageMixin):
             )
             return
         await self.make_response(
-            text="Обновление прошло успешно"
+            text="Спасибо за регистрацию, я буду связываться с вами ежедневно для мониторинга вашего состояния, вы так же можете использовать команду /start если вам нужна консультация!"
         )
-
-
-class StartDialog(MessageMixin):
-    async def handle(self):
-        self.progress_func()
-        await self.fsm.set_state(state=Patient.dialog)
-        await self.make_response(
-            text="Здравствуйте! Как ваше самочувствие?"
-        )
+        await asyncio.sleep(60)
+        help_func = StartDialog(event=self.event)
+        await help_func.handle()
 
 
 @router.message(Patient.dialog)
@@ -71,9 +76,16 @@ class Dialog(MessageMixin):
             await self.make_response(text=text)
             return
         elif trigger == 1:
-            # здесь создать задачу уведомления доктора
+            me = await check_patient(telegram_id=self.chat_id)
+            iin = me.get("individual_number")
+            doctor_tele_id = me["doctor"]["telegram_id"]
+            help_func = Alarm(event=self.event)
+            await help_func.handle(patient_num=iin, doc_tele_id=doctor_tele_id)
             await self.fsm.clear()
             await self.make_response(
                 text="""C вами скоро свяжется акушерка или врач, но вы можете ответить на их звонок из машины скорой помощи.
-                у вас обнаружены тревожные признаки и вам надлежит незамедлительно отправиться в роддом"""
+у вас обнаружены тревожные признаки и вам надлежит незамедлительно вызовите скорую помощь!"""
             )
+        elif trigger == 2:
+            await self.fsm.clear()
+            await self.make_response(text="Спасибо за обратную связь, помните, вы всегда можете использовать команду /start если нужна консультация!")

@@ -28,3 +28,4 @@ CHAT = f"{API_HOST}api/v1/chat"
 CHECK_DOC = f"{API_HOST}check/doctor"
 CHECK_PAT = f"{API_HOST}check/patient"
 MY_PATIENTS = f"{API_HOST}view/doctor/" # тут надо добавить в конце телеграм id
+GET_DOCTORS = f"{API_HOST}view/doctor"

@@ -271,10 +271,14 @@ class CheckUser:
                 status_code=status.HTTP_404_NOT_FOUND, 
                 detail="there is no data"
             )
+        help_schema = CreateDoctor(
+            id=obj.doctor.id, telegram_id=obj.doctor.telegram_id, 
+            individual_number=obj.doctor.individual_number
+        )
         schema = CreatePatient(
             id=obj.id, telegram_id=obj.telegram_id, 
             individual_number=obj.individual_number,
-            doctor_id=obj.doctor_id
+            doctor_id=obj.doctor_id, doctor=help_schema
         )
         return schema
 
