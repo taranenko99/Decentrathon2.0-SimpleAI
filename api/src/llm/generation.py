@@ -17,7 +17,7 @@ from src.settings.base import session
 
 from dotenv import load_dotenv
 from src.db.models import PatientTests, Patients
-from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
+from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT, PATIENT_CLASSIFIER_PROMPT
 
 
 load_dotenv()
@@ -103,6 +103,21 @@ def generate_summary_of_analysis(analysis_json):
     answer = response.choices[0].message.content
     return answer
 
+def classify_patient_answer(text):
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system", "content": PATIENT_CLASSIFIER_PROMPT},
+            {"role": "user", "content": f'Ответ пациента: {text}'}
+        ],
+        temperature=0.0,
+        max_tokens=2048,
+    )
+    
+    answer = response.choices[0].message.content
+    return answer
+
+
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 def is_memory_empty(telegram_id: str) -> bool:
@@ -167,9 +182,3 @@ async def qa(user_query, telegram_id):
         
         result = {'bot_message':answer,'trigger':status_answer}
         return result
-
-if __name__ == '__main__':
-    with open('result.json','r',encoding='utf-8') as f:
-        data = f.read()
-    rs =generate_summary_of_analysis(data)
-    print(rs)
