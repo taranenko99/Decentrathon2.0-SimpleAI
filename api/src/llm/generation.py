@@ -15,7 +15,9 @@ from langchain.prompts.chat import ChatPromptTemplate
 
 
 from dotenv import load_dotenv
-from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS
+# from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
+from prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
+
 
 load_dotenv()
 
@@ -45,7 +47,7 @@ def get_chain():
     )
 
     prompt = ChatPromptTemplate.from_messages([
-        ("system","Ты ассистент гинеколог. Твоя задача задавать уточняющие вопросы пользователю из заметки гинеколога по проблеме пациента и помочь ему выявить причину проблемы. Если по ответам пациента можно понять, что ему очень плохо и такого быть не должно, то фокусируйся на этом а до тех пор задавай вопросы из заметок и также дополняй от себя. Если ответ пользователя не по теме, сообщи ему об этом. \nЗаметки гинеколога: {context}"),
+        ("system",GINEKOLOGY_PROMPT),
         MessagesPlaceholder(variable_name="chat_history"),
         ("user", "Ответ пользователя: {input}")
     ])
@@ -131,7 +133,7 @@ def qa(user_query, telegram_id):
         add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)
 
         
-        result = {'bot_message':answer,'trigger':False}
+        result = {'bot_message':answer,'trigger':0}
         return result
         
     else:
@@ -140,7 +142,7 @@ def qa(user_query, telegram_id):
         add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)
         status_answer = binary_classify(answer)
         
-        result = {'bot_message':answer,'trigger':bool(status_answer)}
+        result = {'bot_message':answer,'trigger':status_answer}
         return result
 
 if __name__ == '__main__':
