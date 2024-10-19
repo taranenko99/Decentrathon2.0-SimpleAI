@@ -1,7 +1,5 @@
 # Aiogram
 from aiogram import Router, F
-from aiogram.filters import CommandStart, StateFilter
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 
 # Python
 import os
@@ -14,6 +12,14 @@ from src.settings.base import bot, VOLUME
 
 
 router = Router(name="Doctor Router")
+
+
+class Alarm(MessageMixin):
+    async def handle(self, patient_num: str, doc_tele_id: int):
+        self.progress_func()
+        await bot.send_message(
+            chat_id=doc_tele_id, text=f"Тревога! У пациента {patient_num} тревожные признаки! Срочно свяжитесь с пациентом!"
+        )
 
 
 @router.callback_query(Master.select, F.data == "doctor")

@@ -5,6 +5,7 @@ import asyncio
 from src.settings.base import bot, logger, AIOREDIS, dp, http_session
 from src.settings.config import MENU, DESCRIPTION
 from src.v1.routers import ROUTERS
+from src.v1.tasks import get_scheduler
 
 
 async def main():
@@ -13,7 +14,10 @@ async def main():
         await bot.set_my_description(description=DESCRIPTION)
         dp.include_routers(*ROUTERS)
         logger.info("START BOT")
-        await dp.start_polling(bot)
+        await asyncio.gather(
+            dp.start_polling(bot),
+            get_scheduler()
+        )
     except KeyboardInterrupt:
         pass
     finally:
