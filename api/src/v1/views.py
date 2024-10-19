@@ -21,8 +21,8 @@ from src.llm.get_text_from_image import get_text_from_table
 from .depends import get_async_session
 from .schemas.response import ErrorSchema, ResponseSchema, ResponseChat
 from .schemas.users import (
-    CreateDoctor, CreatePatient, ViewAllDoctors, 
-    ViewAllPatients, ViewTest, UpdatePatient, ViewDoctor
+    CreateDoctor, CreatePatient, ViewAllDoctors, ViewAllPatients, 
+    ViewTest, RequestChat, UpdatePatient, ViewDoctor
 )
 
 
@@ -342,7 +342,7 @@ class Chat:
     def __init__(self) -> None:
         self.path = "/chat"
         self.router = APIRouter(
-            prefix="/api/v1", tags=["tests"]
+            prefix="/api/v1", tags=["Chat"]
         )
         self.router.add_api_route(
             path=self.path, endpoint=self.chat, 
@@ -354,17 +354,13 @@ class Chat:
 
     @staticmethod
     async def chat(
-        telegram_id: Annotated[int, Form(ge=0)],
-        message: str,
+        self, response: Response,
+        request: RequestChat
     ):
         try:
-            bot_response = qa(
-                user_query=message, telegram_id=str(telegram_id)
-            )
-            return ResponseChat(
-                trigger=bot_response['trigger'], 
-                bot_message=bot_response['bot_message']
-            )
+            bot_response = await qa(user_query=request.message, telegram_id=str(request.telegram_id))
+            return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
+
         except Exception as e:
             error = f"Something went wrong: {e.__cause__}"
             logger.error(error)

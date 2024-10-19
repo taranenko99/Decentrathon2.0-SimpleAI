@@ -2,7 +2,7 @@ import os
 import json
 import openai
 import redis
-
+from loguru import logger
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain.retrievers import EnsembleRetriever
@@ -12,9 +12,11 @@ from langchain_core.prompts import MessagesPlaceholder
 
 from langchain_community.chat_message_histories import RedisChatMessageHistory
 from langchain.prompts.chat import ChatPromptTemplate
-
+from sqlalchemy import insert, select
+from src.settings.base import session
 
 from dotenv import load_dotenv
+from src.db.models import PatientTests, Patients
 from src.llm.prompts import CLASSIFICATION_PROMPT, SUMMARY_ANALYSIS, GINEKOLOGY_PROMPT
 
 
@@ -111,23 +113,40 @@ def is_memory_empty(telegram_id: str) -> bool:
 
 embeddings = OpenAIEmbeddings()
 
-def qa(user_query, telegram_id):
+async def get_analysis(telegram_id: int):
+    try:
+        query = select(Patients).where(Patients.telegram_id == int(telegram_id))
+        async with session() as conn:
+            result = await conn.execute(query)
+            temp = result.scalars().one_or_none()
+        
+        analysis_result = ""
+        for j in temp.tests:
+            analysis = generate_summary_of_analysis(j.data)
+            analysis_result = analysis_result + analysis
+        return analysis_result
+    
+    except Exception as e:
+        logger.error(e)
+        
+async def qa(user_query, telegram_id):
     chat_history_redis = RedisChatMessageHistory(session_id=telegram_id,
                                                     url=REDIS_URL,
                                                     key_prefix='memory'
                                                     )
     
     chat_chain = get_chain()
-    db = FAISS.load_local(r"faiss_index", embeddings, allow_dangerous_deserialization=True)
-    # create_vector_db(r'vector_db/symptoms.txt')
-    retriever = db.as_retriever()
+    db_vector = FAISS.load_local(r"faiss_index", embeddings, allow_dangerous_deserialization=True)
+    retriever = db_vector.as_retriever()
     docs = retriever.invoke(user_query)
     context = docs[0].page_content
     
     
-
+    analysis = await get_analysis(telegram_id)
+    
     if is_memory_empty(telegram_id=telegram_id):
-        response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
+        
+        response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:], 'analysis': analysis})
         answer = response.content
         add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)
 
