@@ -1,5 +1,5 @@
 # SQLAlchemy
-from sqlalchemy import BigInteger, String, ForeignKey
+from sqlalchemy import BigInteger, String, ForeignKey, JSON
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import (
     DeclarativeBase, Mapped, mapped_column, relationship
@@ -61,6 +61,7 @@ class PatientTests(Base):
         ForeignKey("patients.id", ondelete="CASCADE"), nullable=False
     )
     file_path: Mapped[str] = mapped_column(String, nullable=True)
+    data: Mapped[dict] = mapped_column(JSON)
 
     patient: Mapped[Patients] = relationship(
         back_populates="tests", lazy="selectin"
