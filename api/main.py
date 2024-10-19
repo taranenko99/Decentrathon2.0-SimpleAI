@@ -20,7 +20,7 @@ async def main():
         port=8000
     )
     server = uvicorn.Server(config=config)
-    create_vector_db(r'src/llm/vector_db/symptoms.txt')
+    create_vector_db(r'api/src/llm/vector_db/symptoms.txt')
     logger.info("SERVER STARTED")
     await server.serve()
 
