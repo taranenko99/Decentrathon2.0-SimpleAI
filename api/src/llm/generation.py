@@ -107,8 +107,12 @@ r = redis.Redis(host='localhost', port=6379, db=0)
 
 def is_memory_empty(telegram_id: str) -> bool:
     """Проверяет, пустой ли ключ в Redis."""
-    value = r.get(telegram_id)  # Получаем значение по ключу
-    return value is None or value == b''
+    value = r.lrange(f'memory{telegram_id}', 0, -1)  # Получаем значение по ключу
+    print(value)
+    if value == []:
+        return True
+    else:
+        return False
 
 
 embeddings = OpenAIEmbeddings()
@@ -143,8 +147,9 @@ async def qa(user_query, telegram_id):
     
     
     analysis = await get_analysis(telegram_id)
-    
-    if is_memory_empty(telegram_id=telegram_id):
+    empty = is_memory_empty(telegram_id=telegram_id)
+    print(empty)
+    if empty:
         
         response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:], 'analysis': analysis})
         answer = response.content
@@ -155,7 +160,7 @@ async def qa(user_query, telegram_id):
         return result
         
     else:
-        response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
+        response = chat_chain.invoke({"input": user_query,'context':context, 'chat_history':chat_history_redis.messages[-5:], 'analysis': analysis})
         answer = response.content
         add_message_to_redis(ai_answer=answer, user_query=user_query,telegram_id=telegram_id)
         status_answer = binary_classify(answer)

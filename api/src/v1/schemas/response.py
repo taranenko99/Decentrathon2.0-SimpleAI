@@ -11,5 +11,5 @@ class ErrorSchema(BaseModel):
 
 
 class ResponseChat(BaseModel):
-    trigger: bool = Field(...) 
+    trigger: int = Field(...) 
     bot_message: str = Field(...)
