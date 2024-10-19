@@ -17,23 +17,28 @@ embeddings = OpenAIEmbeddings()
 
 query = input('Как ваше самочувствие? ')
 db = FAISS.load_local(r"faiss_index", embeddings, allow_dangerous_deserialization=True)
-# create_vector_db(r'vector_db/symptoms.txt')
+# db = create_vector_db(r'vector_db/symptoms.txt')
 retriever = db.as_retriever()
 docs = retriever.invoke(query)
 context = docs[0].page_content
+
+with open('result.json','r',encoding='utf-8') as f:
+    data = f.read()
+rs =generate_summary_of_analysis(data)
+
 # print(context)
 
 
 while True:
     if a == 0:
-        response = chat_chain.invoke({"input": query,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
+        response = chat_chain.invoke({"input": query,'context':context, 'analysis':rs, 'chat_history':chat_history_redis.messages[-5:]})
         answer = response.content
         add_message_to_redis(ai_answer=answer, user_query=query,telegram_id=chat_history_key)
         print(response.content)
         a = 1
     else:
         query_b = input('your answer: ')
-        response = chat_chain.invoke({"input": query_b,'context':context, 'chat_history':chat_history_redis.messages[-5:]})
+        response = chat_chain.invoke({"input": query_b,'context':context, 'analysis':rs, 'chat_history':chat_history_redis.messages[-5:]})
         answer = response.content
         
         status_answer = binary_classify(answer)
