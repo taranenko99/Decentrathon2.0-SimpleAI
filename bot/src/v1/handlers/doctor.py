@@ -3,10 +3,14 @@ from aiogram import Router, F
 from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 
+# Python
+import os
+
 # local
 from src.v1.states import Master, Doctor
 from src.v1.mixins import MessageMixin, CallbackMixin
-from src.v1.utils.master import create_doctor, create_patient
+from src.v1.utils.master import create_doctor, create_patient, send_test
+from src.settings.base import bot, VOLUME
 
 
 router = Router(name="Doctor Router")
@@ -39,6 +43,7 @@ class CreateDoctor(MessageMixin):
                 text="Невозможно создать пользователя"
             )
             return
+        await self.fsm.clear()
         await self.make_response(
             text="""Регистрация прошла успешно! 
             \nВы можете использовать команды в меню чтобы добавлять пациентов и их анализы!"""
@@ -57,7 +62,7 @@ class JoinPatient(MessageMixin):
         data = await self.fsm.get_data()
         doctor = data.get("user")
         created = await create_patient(data={
-            "doctor_id": doctor.id,
+            "doctor_id": doctor.get("id"),
             "individual_number": self.event.text
         })
         if not created:
@@ -69,7 +74,36 @@ class JoinPatient(MessageMixin):
         await self.make_response(text="Пациент добавлен!")
 
 
-@router.message(F.content_type == ContentType.PHOTO)
+@router.callback_query(Doctor.add_tests)
+class SelectPatient(CallbackMixin):
+    async def handle(self):
+        self.progress_func()
+        await self.answer_to_callback()
+        await self.fsm.update_data(data={
+            "patient_id": int(self.event.data)
+        })
+        await self.fsm.set_state(state=Doctor.wait_doc)
+        await self.make_response(text="Отправьте изображение или документ")
+
+
+@router.message(Doctor.wait_doc)
 class AddPhoto(MessageMixin):
     async def handle(self):
-        pass
+        self.progress_func()
+        try:
+            photo = self.event.document.file_id
+            filename = self.event.document.file_name
+        except:
+            await self.make_response(text="Я же сказал фото или документ!")
+            return
+        data = await self.fsm.get_data()
+        patient_id = data.get("patient_id")
+        photo_file = await bot.get_file(file_id=photo)
+        filepath = os.path.join(VOLUME, filename)
+        await bot.download_file(file_path=photo_file.file_path, destination=filepath)
+        answer = await send_test(filepath=filepath, patient_id=patient_id, filename=filename)
+        if not answer:
+            await self.make_response(text="Что-то пошло не так, отправьте еще раз")
+            return
+        await self.fsm.clear()
+        await self.make_response(text="Анализ успешно загружен!")

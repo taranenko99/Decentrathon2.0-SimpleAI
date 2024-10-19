@@ -1,6 +1,6 @@
 # FastApi
 from fastapi import (
-    Depends, APIRouter, Response, status, Form, UploadFile, HTTPException
+    Depends, APIRouter, Response, status, Form, UploadFile, HTTPException, File
 )
 
 # Thirt-Party
@@ -298,21 +298,20 @@ class ForDoctors:
     async def add_tests(
         response: Response,
         patient_id: Annotated[int, Form(ge=0)],
-        docs: list[UploadFile] = None, 
+        doc: UploadFile = File(), 
         session: AsyncSession = Depends(get_async_session)
     ):
         try:
             now = datetime.now().strftime("%Y-%m-%d")
             data = {}
-            for doc in docs:
-                doc_path = os.path.join("docs", f"{now}_{doc.filename}")
-                file_path = os.path.join(VOLUME, doc_path)
-                os.makedirs(os.path.dirname(file_path), exist_ok=True)
-                async with aiofiles.open(file_path, 'wb') as f:
-                    while content := await doc.read(1024):
-                        await f.write(content)
-                temp_data = get_text_from_table(image_path=file_path)
-                data.update({f"{now}_{doc.filename}": temp_data})
+            doc_path = os.path.join("docs", f"{now}_{doc.filename}")
+            file_path = os.path.join(VOLUME, doc_path)
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            async with aiofiles.open(file_path, 'wb') as f:
+                while content := await doc.read(1024):
+                    await f.write(content)
+            temp_data = get_text_from_table(image_path=file_path)
+            data.update({f"{now}_{doc.filename}": temp_data})
 
         except Exception as e:
             error = f"Something went wrong: {e.__cause__}"
