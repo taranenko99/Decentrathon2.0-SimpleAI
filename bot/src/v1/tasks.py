@@ -15,7 +15,7 @@ async def get_scheduler():
 
 async def default_jobs():
     scheduler.add_job(
-        start, "cron", hour=18, minute=37, 
+        start, "cron", hour=19, minute=36, 
         replace_existing=True, name="check_date", jobstore="redis",
         id="check_date"    
     )

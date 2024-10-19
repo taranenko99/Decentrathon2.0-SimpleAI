@@ -7,6 +7,7 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import insert, select, update
 import aiofiles
+from langchain_community.chat_message_histories import RedisChatMessageHistory
 
 # Python
 from typing import Annotated
@@ -14,9 +15,9 @@ from datetime import datetime
 import os
 
 # Local
-from src.llm.generation import qa, classify_patient_answer
+from src.llm.generation import qa, classify_patient_answer, summarize_last_chat_history
 from src.db.models import Doctors, Patients, PatientTests
-from src.settings.base import VOLUME, logger
+from src.settings.base import VOLUME, logger, REDIS_URL
 from src.llm.get_text_from_image import get_text_from_table
 from .depends import get_async_session
 from .schemas.response import ErrorSchema, ResponseSchema, ResponseChat
@@ -302,7 +303,7 @@ class ForDoctors:
     async def add_tests(
         response: Response,
         patient_id: Annotated[int, Form(ge=0)],
-        doc: UploadFile = File(), 
+        doc: UploadFile = None, 
         session: AsyncSession = Depends(get_async_session)
     ):
         try:
@@ -357,6 +358,11 @@ class Chat:
 
     @staticmethod
     async def chat(request: RequestChat):
+        # chat_history_redis = RedisChatMessageHistory(
+        #     session_id=request.telegram_id,
+        #     url=REDIS_URL, key_prefix='memory'
+        # )
+        # answer = summarize_last_chat_history(chat_history=chat_history_redis.messages[-5:])
         try:
             status = classify_patient_answer(text=request.message)
             if status == "0":
