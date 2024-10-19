@@ -1,7 +1,7 @@
 # Aiogram
 from aiogram import Router, F
 from aiogram.filters import CommandStart, StateFilter
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ContentType
 
 # local
 from src.v1.states import Master, Doctor
@@ -67,3 +67,9 @@ class JoinPatient(MessageMixin):
             return
         await self.fsm.clear()
         await self.make_response(text="Пациент добавлен!")
+
+
+@router.message(F.content_type == ContentType.PHOTO)
+class AddPhoto(MessageMixin):
+    async def handle(self):
+        pass
