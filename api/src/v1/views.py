@@ -353,10 +353,7 @@ class Chat:
         )
 
     @staticmethod
-    async def chat(
-        self, response: Response,
-        request: RequestChat
-    ):
+    async def chat(request: RequestChat):
         try:
             bot_response = await qa(user_query=request.message, telegram_id=str(request.telegram_id))
             return ResponseChat(trigger=bot_response['trigger'], bot_message=bot_response['bot_message'])
