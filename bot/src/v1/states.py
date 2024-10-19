@@ -7,3 +7,9 @@ class Master(StatesGroup):
     pat_number = State()
     doc_number = State()
     reg = State()
+
+
+class Doctor(StatesGroup):
+    add_patient = State()
+    add_tests = State()
+    break_state = State()

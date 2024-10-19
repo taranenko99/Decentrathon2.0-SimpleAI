@@ -25,18 +25,29 @@ class ViewAllDoctors(BaseModel):
 
 class CreatePatient(BaseModel):
     id: Optional[int] = None
-    telegram_id: int = Field(ge=0)
+    telegram_id: Optional[int] = None
     individual_number: str = Field(min_length=12, max_length=12)
     doctor_id: int = Field(ge=0)
 
     class Config:
         json_schema_extra = {
             "examples": [{
-                "telegram_id": 8259013952,
                 "individual_number": "012583758345",
                 "doctor_id": 25
             }]
         }
+
+
+class ViewDoctor(BaseModel):
+    id: Optional[int] = None
+    telegram_id: int = Field(ge=0)
+    individual_number: str = Field(min_length=12, max_length=12)
+    patients: list[CreatePatient]
+
+
+class UpdatePatient(BaseModel):
+    individual_number: str = Field(min_length=12, max_length=12)
+    telegram_id: int = Field(ge=0)
 
 
 class RequestChat(BaseModel):
